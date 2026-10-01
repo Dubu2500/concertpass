@@ -62,7 +62,7 @@ def reserve(req: Reservation):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (reservation_id, req.concert_id, req.user_id, req.ticket_type,
-                 req.quantity, "confirmed", now, now),
+                 req.quantity, "pending", now, now),
             )
     except psycopg2.Error as e:
         raise HTTPException(status_code=500, detail=f"Error de base de datos: {e}")
@@ -73,5 +73,5 @@ def reserve(req: Reservation):
         "user_id": req.user_id,
         "ticket_type": req.ticket_type,
         "quantity": req.quantity,
-        "status": "confirmed",
+        "status": "pending",
     }
