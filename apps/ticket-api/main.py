@@ -1,13 +1,16 @@
 import os
 import uuid
 from datetime import datetime, timezone
+import boto3
+import json
 
 import psycopg2
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="ticket-api")
-
+sqs = boto3.client("sqs")
+queue_url = os.environ["SQS_HOST"]
 
 def get_connection():
     # Toda la configuración viene de variables de ambiente (nada hardcodeado)
@@ -20,6 +23,20 @@ def get_connection():
         connect_timeout=5,
     )
 
+class Reservation(BaseModel):
+    concert_id: str
+    user_id: str
+    ticket_type: str
+    quantity: int = Field(gt=0)
+
+def send_reservation_message(reservation: dict):
+    msg = sqs.send_message(
+        QueueUrl=queue_url,
+        MessageBody=json.dumps(reservation),
+        MessageGroupId=reservation["concert_id"]
+    )
+
+    return msg["MessageId"]
 
 @app.on_event("startup")
 def create_table():
@@ -40,18 +57,11 @@ def create_table():
             """
         )
 
-
-class Reservation(BaseModel):
-    concert_id: str
-    user_id: str
-    ticket_type: str
-    quantity: int = Field(gt=0)
-
-
 @app.post("/reserve", status_code=201)
 def reserve(req: Reservation):
     reservation_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+
     try:
         with get_connection() as conn, conn.cursor() as cur:
             cur.execute(
@@ -66,8 +76,8 @@ def reserve(req: Reservation):
             )
     except psycopg2.Error as e:
         raise HTTPException(status_code=500, detail=f"Error de base de datos: {e}")
-
-    return {
+    
+    reservation = {
         "reservation_id": reservation_id,
         "concert_id": req.concert_id,
         "user_id": req.user_id,
@@ -75,3 +85,10 @@ def reserve(req: Reservation):
         "quantity": req.quantity,
         "status": "pending",
     }
+
+    try:
+        send_reservation_message(reservation)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error enviando mensaje a SQS: {e}")
+
+    return reservation
