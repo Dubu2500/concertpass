@@ -4,18 +4,12 @@
 # en la laptop se pueda conectar (diapositiva 51 del PDF 13).
 #
 # Uso:
-#   export DB_PASSWORD='tu-password'
 #   ./scripts/create-rds-instance.sh
 set -e
 
 REGION=us-east-1
 DB_ID=ticket-checkout-db
 SG_NAME=concertpass-rds-sg
-
-if [ -z "$DB_PASSWORD" ]; then
-  echo "Primero define la contraseña: export DB_PASSWORD='...'"
-  exit 1
-fi
 
 # VPC por defecto de la cuenta
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true \
@@ -30,6 +24,7 @@ MY_IP=$(curl -s https://checkip.amazonaws.com)
 aws ec2 authorize-security-group-ingress --group-id $SG_ID \
   --protocol tcp --port 5432 --cidr ${MY_IP}/32 --region $REGION
 
+# ahora las credenciales se manejan en secrets manager con --manage-master-user-password
 aws rds create-db-instance \
   --db-instance-identifier $DB_ID \
   --db-instance-class db.t3.micro \
@@ -38,11 +33,11 @@ aws rds create-db-instance \
   --allocated-storage 20 \
   --db-name concertpass \
   --master-username postgres \
-  --master-user-password "$DB_PASSWORD" \
+  --manage-master-user-password \
   --vpc-security-group-ids $SG_ID \
   --backup-retention-period 0 \
   --publicly-accessible \
-  --region $REGION
+  --region $REGION >/dev/null
 
 echo "Esperando a que la RDS esté disponible (tarda varios minutos)..."
 aws rds wait db-instance-available --db-instance-identifier $DB_ID --region $REGION

@@ -2,11 +2,19 @@
 # Borra todo lo que crea concertpass en AWS:
 # - la cola SQS (PDF 14, paso 5)
 # - los repositorios de ECR y la RDS con su tabla (PDF 13, diapositiva 47)
+# - el cluster eks
 # No usa "set -e" para que siga aunque algo ya se haya borrado.
 
 REGION=us-east-1
 DB_ID=ticket-checkout-db
 SG_NAME=concertpass-rds-sg
+CLUSTER_NAME=concertpass-cluster
+
+# es importante borrar el cluster primero porque genera mucho costo y puede tardar en borrarse
+# los pods, nodos y el stack de cloudformation se eliminan junto con el cluster automaticamente
+echo "== Borrando el cluster EKS (puede tardar varios minutos)"
+eksctl delete cluster --name $CLUSTER_NAME --region $REGION --wait
+rm -f /tmp/concertpass-cluster.yaml
 
 echo "== Borrando la cola SQS"
 QUEUE_URL=$(aws sqs get-queue-url --queue-name concertpass-reservations.fifo \

@@ -1,0 +1,64 @@
+# manifest de ticket-api
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-api
+  labels:
+    app: ticket-api
+spec:
+  replicas: 2 # 2 pods son mas robustos que uno
+  selector:
+    matchLabels:
+      app: ticket-api
+  template:
+    metadata:
+      labels:
+        app: ticket-api
+    spec:
+      containers:
+        - name: ticket-api
+          image: ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/ticket-api:latest
+          imagePullPolicy: Always # cada vez que arranca un pod, el kubelet consulta a ECR por la imagen
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: ticket-api-db
+          env:
+            - name: SQS_HOST
+              value: "${SQS_QUEUE_URL}"
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          # readiness: determina si la aplicacion esta lista para recibir trafico
+          # en este caso se espera 5 segundos antes de las comprobaciones iniciales y luego se realizan cada 10 segundos
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # liveness: checa si la aplicacion sigue viva
+          # en este caso se checa cada 20 segundos
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticket-api
+spec:
+  type: NodePort # para exponer el servicio
+  selector:
+    app: ticket-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080 # este expone el puerto en el nodo de kubernetes
