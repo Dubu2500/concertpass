@@ -1,0 +1,53 @@
+# manifest de ticket-checkout
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-checkout
+  labels:
+    app: ticket-checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticket-checkout
+  template:
+    metadata:
+      labels:
+        app: ticket-checkout
+    spec:
+      containers:
+        - name: ticket-checkout
+          image: ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/ticket-checkout:latest
+          imagePullPolicy: Always # cada vez que arranca un pod, el kubelet consulta a ECR por la imagen
+          ports:
+            - containerPort: 8080
+          # readiness: determina si la aplicacion esta lista para recibir trafico
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # liveness: checa si la aplicacion sigue viva
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticket-checkout
+spec:
+  type: ClusterIP # solo se usa dentro del cluster, ticket-worker lo llama por http://ticket-checkout:8080
+  selector:
+    app: ticket-checkout
+  ports:
+    - port: 8080
+      targetPort: 8080
