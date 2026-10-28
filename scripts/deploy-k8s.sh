@@ -31,11 +31,13 @@ sed -e "s|\${DB_HOST}|$DB_HOST|g" \
 kubectl wait --for=condition=Ready externalsecret/ticket-api-db --timeout=120s
 
 # desplega los manifests
-for APP in ticket-api; do
+for APP in ticket-api ticket-checkout; do
   sed -e "s|\${ACCOUNT_ID}|$ACCOUNT_ID|g" \
       -e "s|\${SQS_QUEUE_URL}|$SQS_QUEUE_URL|g" \
       k8s/$APP.yaml | kubectl apply -f -
 done
 
 kubectl rollout status deployment/ticket-api --timeout=180s
+kubectl rollout status deployment/ticket-checkout --timeout=180s
 kubectl get pods
+kubectl get services
