@@ -35,7 +35,7 @@ echo "Esperando a que la RDS se borre (tarda varios minutos)..."
 aws rds wait db-instance-deleted --db-instance-identifier $DB_ID --region $REGION
 
 echo "== Borrando las tablas de DynamoDB"
-for table in Concerts Tickets; do
+for table in Concerts; do
   aws dynamodb delete-table --table-name $table --region $REGION >/dev/null \
     && echo "Borrada: $table"
 done
