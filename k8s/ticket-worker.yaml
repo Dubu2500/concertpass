@@ -1,0 +1,39 @@
+# manifest de ticket-worker
+# no lleva Service porque nadie le hace requests, solo hace polling a SQS
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-worker
+  labels:
+    app: ticket-worker
+spec:
+  replicas: 1 # la practica pide 1 replica, para la prueba de concurrencia se escala a 3 con kubectl scale
+  selector:
+    matchLabels:
+      app: ticket-worker
+  template:
+    metadata:
+      labels:
+        app: ticket-worker
+    spec:
+      containers:
+        - name: ticket-worker
+          image: ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/ticket-worker:latest
+          imagePullPolicy: Always # cada vez que arranca un pod, el kubelet consulta a ECR por la imagen
+          # credenciales de RDS desde secrets manager (mismo secreto que ticket-api)
+          envFrom:
+            - secretRef:
+                name: ticket-api-db
+          env:
+            - name: SQS_HOST
+              value: "${SQS_QUEUE_URL}"
+            - name: DYNAMODB_TABLE
+              value: Concerts
+            - name: CHECKOUT_URL
+              value: http://ticket-checkout:8080 # nombre DNS del Service de ticket-checkout
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
