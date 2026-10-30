@@ -34,7 +34,7 @@ https://helm.sh/docs/intro/install/
 ```
 La creacion del cluster puede tardar varios minutos.
 
-Al terminar el despliege con ```deploy-k8s.sh``` confirma que los pods de ```ticket-api``` y ```ticket-checkout``` queden con el estado ```Running```:
+Al terminar el despliege con ```deploy-k8s.sh``` confirma que los pods de ```ticket-api```, ```ticket-checkout``` y ```ticket-worker``` queden con el estado ```Running```:
 ```bash
    kubectl get pods
    kubectl get services
