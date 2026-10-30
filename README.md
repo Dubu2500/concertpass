@@ -21,6 +21,7 @@ https://helm.sh/docs/intro/install/
    export AWS_PAGER=""
    ./scripts/create-rds-instance.sh
    ./scripts/create-sqs.sh
+   ./scripts/create-dynamodb-table.sh
    ./scripts/publish-ecr.sh ticket-api
    ./scripts/publish-ecr.sh ticket-worker
    ./scripts/publish-ecr.sh ticket-checkout

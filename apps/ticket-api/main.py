@@ -92,3 +92,43 @@ def reserve(req: Reservation):
         raise HTTPException(status_code=500, detail=f"Error enviando mensaje a SQS: {e}")
 
     return reservation
+
+@app.get("/reservation/{reservation_id}")
+def get_reservation(reservation_id: str):
+    try:
+        uuid.UUID(reservation_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Reservación no encontrada")
+ 
+    try:
+        conn = get_connection()
+        try:
+            with conn, conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT reservation_id, concert_id, user_id, ticket_type,
+                           quantity, status, created_at, updated_at
+                    FROM reservations
+                    WHERE reservation_id = %s
+                    """,
+                    (reservation_id,),
+                )
+                row = cur.fetchone()
+        finally:
+            conn.close()
+    except psycopg2.Error as e:
+        raise HTTPException(status_code=500, detail=f"Error de base de datos: {e}")
+ 
+    if row is None:
+        raise HTTPException(status_code=404, detail="Reservacion no encontrada")
+ 
+    return {
+        "reservation_id": str(row[0]),
+        "concert_id": row[1],
+        "user_id": row[2],
+        "ticket_type": row[3],
+        "quantity": row[4],
+        "status": row[5],
+        "created_at": row[6].isoformat(),
+        "updated_at": row[7].isoformat(),
+    }

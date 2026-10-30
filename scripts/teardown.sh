@@ -3,6 +3,7 @@
 # - la cola SQS (PDF 14, paso 5)
 # - los repositorios de ECR y la RDS con su tabla (PDF 13, diapositiva 47)
 # - el cluster eks
+# - las tabla de dynamodb
 # No usa "set -e" para que siga aunque algo ya se haya borrado.
 
 REGION=us-east-1
@@ -32,6 +33,12 @@ aws rds delete-db-instance --db-instance-identifier $DB_ID \
   --skip-final-snapshot --delete-automated-backups --region $REGION >/dev/null
 echo "Esperando a que la RDS se borre (tarda varios minutos)..."
 aws rds wait db-instance-deleted --db-instance-identifier $DB_ID --region $REGION
+
+echo "== Borrando las tablas de DynamoDB"
+for table in Concerts Tickets; do
+  aws dynamodb delete-table --table-name $table --region $REGION >/dev/null \
+    && echo "Borrada: $table"
+done
 
 echo "== Borrando el security group de la RDS"
 SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$SG_NAME \
